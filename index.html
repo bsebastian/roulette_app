@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RouletteTrack">
+  <title>Roulette Track & P&L</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --card-border: #2c2c2c;
+      --text: #f0f0f0;
+      --text-muted: #999;
+      --red: #c0392b;
+      --black: #2c3e50;
+      --green: #27ae60;
+      --gold: #f39c12;
+      --win: #2ecc71;
+      --loss: #e74c3c;
+    }
+    body {
+      margin: 0;
+      padding: max(env(safe-area-inset-top), 14px) 12px max(env(safe-area-inset-bottom), 16px) 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      user-select: none;
+      -webkit-user-select: none;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      font-size: 1.1rem;
+      margin: 0;
+      color: var(--gold);
+    }
+    .header-btns {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .hdr-btn {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #ddd;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .hdr-btn:active {
+      transform: scale(0.96);
+      opacity: 0.7;
+    }
+    .btn-undo {
+      color: #f39c12;
+      border-color: #554422;
+    }
+    .btn-train {
+      color: #3498db;
+      border-color: #224466;
+    }
+    .btn-clear {
+      color: #ff6b6b;
+      border-color: #553333;
+    }
+
+    /* Bet Bar */
+    .bet-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+    }
+    .bet-bar label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .bet-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .bet-input-wrap span {
+      color: var(--gold);
+      font-weight: bold;
+    }
+    .bet-input-wrap input {
+      width: 60px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #fff;
+      padding: 4px 6px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      text-align: right;
+    }
+
+    /* Prediction Dashboard */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--card-border);
+    }
+    .card-full {
+      grid-column: 1 / -1;
+      border-color: #3d3416;
+      background: #1c1a14;
+    }
+    .card-title {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .card-val {
+      font-size: 0.98rem;
+      font-weight: bold;
+      color: #fff;
+    }
+    .card-sub {
+      font-size: 0.70rem;
+      color: #bbb;
+      margin-top: 4px;
+      line-height: 1.25;
+      word-break: break-all;
+    }
+
+    /* Session P&L Tracker */
+    .pnl-container {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      font-size: 0.75rem;
+    }
+    .pnl-header {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .pnl-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+    .pnl-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #333;
+    }
+    .pnl-table td {
+      padding: 5px 0;
+      border-bottom: 1px solid #252525;
+    }
+    .pnl-table th:first-child, .pnl-table td:first-child {
+      text-align: left;
+      font-weight: 600;
+    }
+    .val-win { color: var(--win); font-weight: bold; }
+    .val-loss { color: var(--loss); font-weight: bold; }
+
+    /* Number Pads */
+    .zero-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .pocket-btn {
+      height: 42px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .pocket-btn:active {
+      opacity: 0.5;
+      transform: scale(0.96);
+    }
+    .bg-green { background: var(--green); }
+    .bg-red { background: var(--red); }
+    .bg-black { background: var(--black); }
+
+    .history-bar {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: #777;
+      overflow-x: auto;
+      white-space: nowrap;
+      padding: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Roulette Predictor</h1>
+    <div class="header-btns">
+      <button class="hdr-btn btn-undo" onclick="clearLast()" title="Undo last entered number">Clear Last</button>
+      <button class="hdr-btn btn-train" onclick="clearWin()" title="Treat prior spins as training ($0 bet)">Clear Win</button>
+      <button class="hdr-btn btn-clear" onclick="clearData()" title="Reset all history and P&L">Clear</button>
+    </div>
+  </header>
+
+  <!-- Bet Configuration Input for Upcoming Spin -->
+  <div class="bet-bar">
+    <label for="bet-amount">Upcoming Bet / Number:</label>
+    <div class="bet-input-wrap">
+      <span>$</span>
+      <input type="number" id="bet-amount" min="0" step="1" value="0" onchange="onBetChange()" oninput="onBetChange()">
+    </div>
+    <div style="color: #888; font-size: 0.75rem;">
+      Cost: <strong style="color:#eee" id="stake-label">$0</strong>/spin
+    </div>
+  </div>
+
+  <!-- Real-Time Top Regions for Upcoming Spin -->
+  <div class="dashboard">
+    <div class="card">
+      <div class="card-title">Top Overall Sector</div>
+      <div class="card-val" id="top-overall">--</div>
+      <div class="card-sub" id="overall-pockets"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="cond-title">Next Spin Sector</div>
+      <div class="card-val" id="top-cond">--</div>
+      <div class="card-sub" id="cond-pockets"></div>
+    </div>
+    <div class="card card-full">
+      <div class="card-title" style="color: var(--gold);">★ Top Recommended (Best Probability)</div>
+      <div class="card-val" id="top-best">--</div>
+      <div class="card-sub" id="best-pockets"></div>
+    </div>
+  </div>
+
+  <!-- Session P&L Tracker -->
+  <div class="pnl-container">
+    <div class="pnl-header">
+      <span>Session Performance</span>
+      <span style="color: #aaa; text-transform: none;">Win: +25× Bet / Loss: -12× Bet</span>
+    </div>
+    <table class="pnl-table">
+      <thead>
+        <tr>
+          <th>Strategy</th>
+          <th>Bets</th>
+          <th>Hits/Miss</th>
+          <th>Won ($)</th>
+          <th>Lost ($)</th>
+          <th>Net P&L</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Overall</td>
+          <td id="pnl-all-spins">0</td>
+          <td id="pnl-all-rate">0 / 0</td>
+          <td id="pnl-all-won" class="val-win">$0</td>
+          <td id="pnl-all-lost" class="val-loss">$0</td>
+          <td id="pnl-all-net">$0</td>
+        </tr>
+        <tr>
+          <td>2. Odd / Even</td>
+          <td id="pnl-cond-spins">0</td>
+          <td id="pnl-cond-rate">0 / 0</td>
+          <td id="pnl-cond-won" class="val-win">$0</td>
+          <td id="pnl-cond-lost" class="val-loss">$0</td>
+          <td id="pnl-cond-net">$0</td>
+        </tr>
+        <tr>
+          <td>3. Best Prob</td>
+          <td id="pnl-best-spins">0</td>
+          <td id="pnl-best-rate">0 / 0</td>
+          <td id="pnl-best-won" class="val-win">$0</td>
+          <td id="pnl-best-lost" class="val-loss">$0</td>
+          <td id="pnl-best-net">$0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Number Input Buttons -->
+  <div class="zero-row">
+    <button class="pocket-btn bg-green" onclick="logPocket('0')">0</button>
+    <button class="pocket-btn bg-green" onclick="logPocket('00')">00</button>
+  </div>
+
+  <div class="grid" id="number-grid"></div>
+
+  <div class="history-bar" id="history-bar">Spins: 0</div>
+
+  <script>
+    // Standard clockwise American Roulette wheel sequence
+    const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
+    const REDS = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
+
+    // Build the 38 sectors of 12 consecutive pockets going clockwise
+    const SECTORS = [];
+    for (let i = 0; i < WHEEL.length; i++) {
+      const pockets = [];
+      for (let j = 0; j < 12; j++) {
+        pockets.push(WHEEL[(i + j) % WHEEL.length]);
+      }
+      SECTORS.push({
+        start: WHEEL[i],
+        pockets: pockets,
+        pocketSet: new Set(pockets)
+      });
+    }
+
+    let history = JSON.parse(localStorage.getItem("roulette_history") || "[]");
+    let storedBet = localStorage.getItem("roulette_bet");
+    let currentBet = (storedBet !== null && !isNaN(parseFloat(storedBet)) && parseFloat(storedBet) >= 0) 
+      ? parseFloat(storedBet) 
+      : 0;
+
+    document.getElementById("bet-amount").value = currentBet;
+
+    function renderGrid() {
+      const container = document.getElementById("number-grid");
+      container.innerHTML = "";
+      for (let i = 1; i <= 36; i++) {
+        const str = String(i);
+        const btn = document.createElement("button");
+        btn.className = `pocket-btn ${REDS.has(str) ? 'bg-red' : 'bg-black'}`;
+        btn.innerText = str;
+        btn.onclick = () => logPocket(str);
+        container.appendChild(btn);
+      }
+    }
+
+    function onBetChange() {
+      const val = parseFloat(document.getElementById("bet-amount").value);
+      currentBet = (!isNaN(val) && val >= 0) ? val : 0;
+      localStorage.setItem("roulette_bet", String(currentBet));
+      document.getElementById("stake-label").innerText = `$${(currentBet * 12).toFixed(0)}`;
+    }
+
+    function logPocket(pocket) {
+      const nextSpinNum = history.length + 1;
+      const betForThisSpin = (nextSpinNum === 1) ? 0 : currentBet;
+
+      history.unshift({
+        spin: nextSpinNum,
+        pocket: String(pocket),
+        bet: betForThisSpin
+      });
+
+      localStorage.setItem("roulette_history", JSON.stringify(history));
+      update();
+    }
+
+    function clearLast() {
+      if (history.length === 0) return;
+      history.shift();
+      localStorage.setItem("roulette_history", JSON.stringify(history));
+      update();
+    }
+
+    function clearWin() {
+      if (history.length === 0) return;
+      if (confirm(`Treat all ${history.length} spins until now as training ($0 bet)?\n\nHistory will be preserved for sector predictions, but session P&L will reset to $0.`)) {
+        history.forEach(item => {
+          item.bet = 0;
+        });
+        localStorage.setItem("roulette_history", JSON.stringify(history));
+        update();
+      }
+    }
+
+    function clearData() {
+      if (confirm("Reset spin history and P&L for this session?")) {
+        history = [];
+        localStorage.removeItem("roulette_history");
+        update();
+      }
+    }
+
+    /**
+     * Finds the best sector for a given history and parity filter.
+     * Matches the Python get_best_region implementation exactly:
+     * - Returns null if filtered spins count is 0.
+     * - Deterministically breaks ties clockwise in WHEEL order starting from '0'.
+     */
+    function getBestSector(spinsList, parityFilter) {
+      let filtered = spinsList;
+      if (parityFilter === 'odd') {
+        filtered = spinsList.filter(item => item.spin % 2 !== 0);
+      } else if (parityFilter === 'even') {
+        filtered = spinsList.filter(item => item.spin % 2 === 0);
+      }
+
+      const total = filtered.length;
+      if (total === 0) {
+        return { sector: null, hits: 0, total: 0, probability: 0 };
+      }
+
+      let bestSec = null;
+      let maxHits = -1;
+
+      for (let i = 0; i < SECTORS.length; i++) {
+        const sec = SECTORS[i];
+        let hits = 0;
+        for (let j = 0; j < filtered.length; j++) {
+          if (sec.pocketSet.has(filtered[j].pocket)) {
+            hits++;
+          }
+        }
+        if (hits > maxHits) {
+          maxHits = hits;
+          bestSec = sec;
+        }
+      }
+
+      return {
+        sector: bestSec,
+        hits: maxHits,
+        total: total,
+        probability: maxHits / total
+      };
+    }
+
+    const sortNums = (arr) => [...arr].sort((a, b) => {
+      if (a === "00") return -1;
+      if (b === "00") return 1;
+      return Number(a) - Number(b);
+    });
+
+    function update() {
+      const totalSpins = history.length;
+      document.getElementById("history-bar").innerText = `Spins logged (${totalSpins}): ${history.slice(0, 10).map(h => h.pocket).join(", ")}`;
+      document.getElementById("stake-label").innerText = `$${(currentBet * 12).toFixed(0)}`;
+
+      if (totalSpins === 0) {
+        document.getElementById("top-overall").innerText = "--";
+        document.getElementById("top-cond").innerText = "--";
+        document.getElementById("top-best").innerText = "--";
+        document.getElementById("overall-pockets").innerText = "";
+        document.getElementById("cond-pockets").innerText = "";
+        document.getElementById("best-pockets").innerText = "";
+
+        ["all", "cond", "best"].forEach(prefix => {
+          document.getElementById(`pnl-${prefix}-spins`).innerText = "0";
+          document.getElementById(`pnl-${prefix}-rate`).innerText = "0 / 0";
+          document.getElementById(`pnl-${prefix}-won`).innerText = "$0";
+          document.getElementById(`pnl-${prefix}-lost`).innerText = "$0";
+          const netEl = document.getElementById(`pnl-${prefix}-net`);
+          netEl.innerText = "$0";
+          netEl.className = "";
+        });
+        return;
+      }
+
+      // --- 1. CURRENT PREDICTIONS FOR UPCOMING SPIN ---
+      const nextSpin = totalSpins + 1;
+      const isNextOdd = (nextSpin % 2 !== 0);
+      document.getElementById("cond-title").innerText = `Next (${isNextOdd ? 'Odd' : 'Even'}) Sector`;
+
+      // S1: Overall Prediction
+      const predS1 = getBestSector(history, 'all');
+      if (predS1.sector) {
+        const probAll = (predS1.probability * 100).toFixed(1);
+        document.getElementById("top-overall").innerText = `Start: ${predS1.sector.start} (${probAll}%)`;
+        document.getElementById("overall-pockets").innerText = sortNums(predS1.sector.pockets).join(", ");
+      } else {
+        document.getElementById("top-overall").innerText = "--";
+        document.getElementById("overall-pockets").innerText = "";
+      }
+
+      // S2: Odd / Even Parity Prediction
+      const predS2 = getBestSector(history, isNextOdd ? 'odd' : 'even');
+      if (predS2.sector) {
+        const probCond = (predS2.probability * 100).toFixed(1);
+        document.getElementById("top-cond").innerText = `Start: ${predS2.sector.start} (${probCond}%)`;
+        document.getElementById("cond-pockets").innerText = sortNums(predS2.sector.pockets).join(", ");
+      } else {
+        document.getElementById("top-cond").innerText = "-- (No History)";
+        document.getElementById("cond-pockets").innerText = `Waiting for prior ${isNextOdd ? 'odd' : 'even'} spins`;
+      }
+
+      // S3: Highest Probability Selection
+      let predS3 = null;
+      let srcS3 = "None";
+      if (!predS1.sector && !predS2.sector) {
+        predS3 = null;
+      } else if (!predS1.sector) {
+        predS3 = predS2;
+        srcS3 = isNextOdd ? "Odd History" : "Even History";
+      } else if (!predS2.sector) {
+        predS3 = predS1;
+        srcS3 = "Overall History";
+      } else if (predS2.probability > predS1.probability) {
+        predS3 = predS2;
+        srcS3 = isNextOdd ? "Odd History" : "Even History";
+      } else {
+        predS3 = predS1;
+        srcS3 = "Overall History";
+      }
+
+      if (predS3 && predS3.sector) {
+        const probBest = (predS3.probability * 100).toFixed(1);
+        document.getElementById("top-best").innerText = `Start: ${predS3.sector.start} (${probBest}%) via ${srcS3}`;
+        document.getElementById("best-pockets").innerText = sortNums(predS3.sector.pockets).join(", ");
+      } else {
+        document.getElementById("top-best").innerText = "--";
+        document.getElementById("best-pockets").innerText = "";
+      }
+
+      // --- 2. HISTORICAL ROLLING P&L ---
+      const chronological = [...history].reverse();
+
+      let s1Hits = 0, s1Misses = 0, s1Won = 0, s1Lost = 0;
+      let s2Hits = 0, s2Misses = 0, s2Won = 0, s2Lost = 0;
+      let s3Hits = 0, s3Misses = 0, s3Won = 0, s3Lost = 0;
+
+      for (let i = 1; i < chronological.length; i++) {
+        const priorSpins = chronological.slice(0, i);
+        const actualSpin = chronological[i];
+        const isSpinOdd = (actualSpin.spin % 2 !== 0);
+
+        const spinBet = (actualSpin.bet !== undefined) ? actualSpin.bet : 0;
+        if (spinBet <= 0) {
+          // Training spin ($0 bet): history is preserved for predictions, but excluded from win/loss and P&L calculations
+          continue;
+        }
+
+        const winPayout = 25 * spinBet;
+        const lossCost = 12 * spinBet;
+
+        const pS1 = getBestSector(priorSpins, 'all');
+        const pS2 = getBestSector(priorSpins, isSpinOdd ? 'odd' : 'even');
+
+        let pS3 = null;
+        if (!pS1.sector && !pS2.sector) {
+          pS3 = null;
+        } else if (!pS1.sector) {
+          pS3 = pS2;
+        } else if (!pS2.sector) {
+          pS3 = pS1;
+        } else if (pS2.probability > pS1.probability) {
+          pS3 = pS2;
+        } else {
+          pS3 = pS1;
+        }
+
+        // Evaluate Strategy 1
+        if (pS1.sector) {
+          if (pS1.sector.pocketSet.has(actualSpin.pocket)) {
+            s1Hits++;
+            s1Won += winPayout;
+          } else {
+            s1Misses++;
+            s1Lost += lossCost;
+          }
+        }
+
+        // Evaluate Strategy 2 (NO BET on spins with no prior parity history)
+        if (pS2.sector) {
+          if (pS2.sector.pocketSet.has(actualSpin.pocket)) {
+            s2Hits++;
+            s2Won += winPayout;
+          } else {
+            s2Misses++;
+            s2Lost += lossCost;
+          }
+        }
+
+        // Evaluate Strategy 3
+        if (pS3 && pS3.sector) {
+          if (pS3.sector.pocketSet.has(actualSpin.pocket)) {
+            s3Hits++;
+            s3Won += winPayout;
+          } else {
+            s3Misses++;
+            s3Lost += lossCost;
+          }
+        }
+      }
+
+      renderPnLRow("all", s1Hits + s1Misses, s1Hits, s1Misses, s1Won, s1Lost, s1Won - s1Lost);
+      renderPnLRow("cond", s2Hits + s2Misses, s2Hits, s2Misses, s2Won, s2Lost, s2Won - s2Lost);
+      renderPnLRow("best", s3Hits + s3Misses, s3Hits, s3Misses, s3Won, s3Lost, s3Won - s3Lost);
+    }
+
+    function renderPnLRow(prefix, total, hits, misses, won, lost, net) {
+      document.getElementById(`pnl-${prefix}-spins`).innerText = total;
+      document.getElementById(`pnl-${prefix}-rate`).innerText = `${hits} / ${misses}`;
+      document.getElementById(`pnl-${prefix}-won`).innerText = `+$${won.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+      document.getElementById(`pnl-${prefix}-lost`).innerText = `-$${lost.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+
+      const netEl = document.getElementById(`pnl-${prefix}-net`);
+      if (net === 0) {
+        netEl.innerText = "$0";
+        netEl.className = "";
+      } else {
+        const sign = net > 0 ? "+$" : "-$";
+        netEl.innerText = `${sign}${Math.abs(net).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+        netEl.className = net > 0 ? "val-win" : "val-loss";
+      }
+    }
+
+    renderGrid();
+    update();
+  </script>
+</body>
+</html>
